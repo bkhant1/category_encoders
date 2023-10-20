@@ -58,6 +58,12 @@ class HashingEncoder(util.BaseEncoder, util.UnsupervisedTransformerMixin):
     n_components: int
         how many bits to use to represent the feature. By default, we use 8 bits.
         For high-cardinality features, consider using up-to 32 bits.
+    process_creation_method: string
+        either "fork", "spawn" or "forkserver" (availability depends on your 
+        platform). See https://docs.python.org/3/library/multiprocessing.html#contexts-and-start-methods
+        for more details and tradeoffs. Defaults to "fork" on linux/macos as it
+        is the fastest option and to "spawn" on windows as it is the only one
+        available
 
     Example
     -------
@@ -111,7 +117,7 @@ class HashingEncoder(util.BaseEncoder, util.UnsupervisedTransformerMixin):
                          handle_unknown="does not apply", handle_missing="does not apply")
 
         if max_process not in range(1, 128):
-            if platform.system == 'Windows':
+            if platform.system() == 'Windows':
                 self.max_process = 1
             else:
                 self.max_process = int(math.ceil(multiprocessing.cpu_count() / 2))
@@ -122,7 +128,10 @@ class HashingEncoder(util.BaseEncoder, util.UnsupervisedTransformerMixin):
         else:
             self.max_process = max_process
         self.max_sample = int(max_sample)
-        self.process_creation_method = process_creation_method
+        if platform.system() == 'Windows':
+            self.process_creation_method = "spawn"
+        else:
+            self.process_creation_method = process_creation_method
         self.data_lines = 0
         self.X = None
 
